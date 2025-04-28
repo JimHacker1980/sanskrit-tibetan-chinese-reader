@@ -82,12 +82,31 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         return paragraphs.map((paragraph, index) => (
             <div key={index} style={{ marginBottom: '1rem', border: '1px solid #ccc', padding: '8px' }}>
                 <textarea
-                    style={{ resize: 'none', border: '1px solid #ccc', padding: '8px', fontSize: '16px', width: '100%', marginBottom: '1rem' }}
+                    style={{
+                        resize: 'none',
+                        border: '1px solid #ccc',
+                        padding: '8px',
+                        fontSize: '16px',
+                        width: '100%',
+                        marginBottom: '1rem',
+                        overflow: 'hidden',
+                    }}
                     value={paragraph}
                     onChange={(e) => {
                         const updatedParagraphs = [...paragraphs];
                         updatedParagraphs[index] = e.target.value;
                         onChange(updatedParagraphs.join('\n'));
+                    }}
+                    rows={1}
+                    ref={(textarea) => {
+                        if (textarea) {
+                            textarea.style.height = 'auto'; // Reset height to auto to recalculate
+                            textarea.style.height = `${textarea.scrollHeight}px`; // Set height to scrollHeight
+                        }
+                    }}
+                    onInput={(e) => {
+                        e.target.style.height = 'auto'; // Reset height to auto to recalculate
+                        e.target.style.height = `${e.target.scrollHeight}px`; // Set height to scrollHeight
                     }}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
