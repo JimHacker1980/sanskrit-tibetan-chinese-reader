@@ -8,26 +8,38 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
 
     const getTranslation = async (text, index, language) => {
         const url = "https://dharmamitra.org/api/translation-no-stream/";
-        const payload = {
-            input_sentence: text,
-            input_encoding: "auto",
-            target_lang: "english",
-        };
 
         try {
-            const response = await axios.post(url, payload, {
+            // 请求英文翻译
+            const englishResponse = await axios.post(url, {
+                input_sentence: text,
+                input_encoding: "auto",
+                target_lang: "english",
+            }, {
                 headers: { "Content-Type": "application/json" },
             });
 
-            if (response.status === 200) {
+            // 请求现代中文翻译
+            const chineseResponse = await axios.post(url, {
+                input_sentence: text,
+                input_encoding: "auto",
+                target_lang: "modern-chinese",
+            }, {
+                headers: { "Content-Type": "application/json" },
+            });
+
+            if (englishResponse.status === 200 && chineseResponse.status === 200) {
                 const updatedTranslations = { ...translations };
                 updatedTranslations[language] = {
                     ...updatedTranslations[language],
-                    [index]: response.data || "翻译失败",
+                    [index]: {
+                        english: englishResponse.data || "翻译失败",
+                        chinese: chineseResponse.data || "翻译失败",
+                    },
                 };
                 setTranslations(updatedTranslations);
             } else {
-                alert(`翻译失败，状态码: ${response.status}`);
+                alert(`翻译失败，状态码: 英文(${englishResponse.status}), 中文(${chineseResponse.status})`);
             }
         } catch (error) {
             alert(`翻译请求出错: ${error.message}`);
@@ -157,7 +169,11 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                     >
                         翻译
                     </button>
-                    <div style={{ fontStyle: 'italic', flex: 1 }}>{translations[language]?.[index] || "点击翻译按钮获取结果"}</div>
+                    <div style={{ fontStyle: 'italic', flex: 1 }}>
+                        {translations[language]?.[index]?.english || "点击翻译按钮获取英文结果"}
+                        <br />
+                        {translations[language]?.[index]?.chinese || "点击翻译按钮获取中文结果"}
+                    </div>
                 </div>
                 <button
                     style={{ padding: '4px 8px', fontSize: '12px', width: '100%' }}
