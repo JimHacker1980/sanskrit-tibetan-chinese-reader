@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange, onTibetanChange, onChineseChange }) => {
     const [translations, setTranslations] = useState({});
     const [analyses, setAnalyses] = useState({});
     const [details, setDetails] = useState({});
+    const [maxHeights, setMaxHeights] = useState([]);
+
+    const sanskritRefs = useRef([]);
+    const tibetanRefs = useRef([]);
+    const chineseRefs = useRef([]);
 
     const getTranslation = async (text, index, language) => {
         const url = "https://dharmamitra.org/api/translation-no-stream/";
@@ -88,7 +93,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         });
     };
 
-    const formatText = (text, onChange, language) => {
+    const formatText = (text, onChange, language, refs) => {
         const paragraphs = text.split('\n');
 
         return paragraphs.map((paragraph, index) => (
@@ -112,6 +117,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                     rows={1}
                     ref={(textarea) => {
                         if (textarea) {
+                            refs.current[index] = textarea;
                             textarea.style.height = 'auto'; // Reset height to auto to recalculate
                             textarea.style.height = `${textarea.scrollHeight}px`; // Set height to scrollHeight
                         }
@@ -184,26 +190,54 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                 >
                     删除
                 </button>
+                <div style={{ height: maxHeights[index] - (refs.current[index]?.offsetHeight || 0) }}></div>
             </div>
         ));
     };
+
+    useEffect(() => {
+        const calculateMaxHeights = () => {
+            const newMaxHeights = [];
+            const maxLength = Math.max(sanskritRefs.current.length, tibetanRefs.current.length, chineseRefs.current.length);
+            for (let i = 0; i < maxLength; i++) {
+                const sanskritHeight = sanskritRefs.current[i]?.offsetHeight || 0;
+                const tibetanHeight = tibetanRefs.current[i]?.offsetHeight || 0;
+                const chineseHeight = chineseRefs.current[i]?.offsetHeight || 0;
+                newMaxHeights[i] = Math.max(sanskritHeight, tibetanHeight, chineseHeight);
+            }
+            setMaxHeights(newMaxHeights);
+        };
+
+        calculateMaxHeights();
+
+        const resizeObserver = new ResizeObserver(calculateMaxHeights);
+        [...sanskritRefs.current, ...tibetanRefs.current, ...chineseRefs.current].forEach(ref => {
+            if (ref) {
+                resizeObserver.observe(ref);
+            }
+        });
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [sanskritText, tibetanText, chineseText]);
 
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>梵语</h2>
-                {formatText(sanskritText, onSanskritChange, 'sanskrit')}
+                {formatText(sanskritText, onSanskritChange, 'sanskrit', sanskritRefs)}
             </div>
             <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>藏语</h2>
-                {formatText(tibetanText, onTibetanChange, 'tibetan')}
+                {formatText(tibetanText, onTibetanChange, 'tibetan', tibetanRefs)}
             </div>
             <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>汉语或其他语言。</h2>
-                {formatText(chineseText, onChineseChange, 'chinese')}
+                {formatText(chineseText, onChineseChange, 'chinese', chineseRefs)}
             </div>
         </div>
     );
 };
 
-export default ReadingArea;
+export default ReadingArea;    
