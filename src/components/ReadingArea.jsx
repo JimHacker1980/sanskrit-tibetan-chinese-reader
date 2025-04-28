@@ -98,6 +98,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
 
         return paragraphs.map((paragraph, index) => (
             <div key={index} style={{ marginBottom: '1rem', border: '1px solid #ccc', padding: '8px' }}>
+                <div ref={(el) => refs.current[index] = el}>
                 <textarea
                     style={{
                         resize: 'none',
@@ -117,7 +118,6 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                     rows={1}
                     ref={(textarea) => {
                         if (textarea) {
-                            refs.current[index] = textarea;
                             textarea.style.height = 'auto'; // Reset height to auto to recalculate
                             textarea.style.height = `${textarea.scrollHeight}px`; // Set height to scrollHeight
                         }
@@ -190,6 +190,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                 >
                     删除
                 </button>
+                </div>
                 <div style={{ height: maxHeights[index] - (refs.current[index]?.offsetHeight || 0) }}></div>
             </div>
         ));
