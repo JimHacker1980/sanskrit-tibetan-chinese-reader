@@ -1,0 +1,21 @@
+/* ReadingArea.css */
+.container {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+}
+
+.container > div {
+    flex: 1;
+    margin: 0 8px; /* Add spacing between columns */
+    display: flex;
+    flex-direction: column;
+}
+
+textarea {
+    flex-grow: 1;
+    resize: none;
+    border: 1px solid #ccc;
+    padding: 8px;
+    font-size: 16px;
+}
