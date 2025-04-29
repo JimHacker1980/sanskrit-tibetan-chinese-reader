@@ -42,9 +42,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                         chinese: chineseResponse.data || "翻译失败",
                     },
                 };
-                console.log(translations);
                 setTranslations(updatedTranslations);
-                console.log(translations);
             } else {
                 alert(`翻译失败，状态码: 英文(${englishResponse.status}), 中文(${chineseResponse.status})`);
             }
@@ -174,7 +172,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <button
                         style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
-                        onClick={() => {getTranslation(paragraph, index, language);console.log(translations)}}
+                        onClick={() => {getTranslation(paragraph, index, language);}}
                     >
                         翻译
                     </button>
