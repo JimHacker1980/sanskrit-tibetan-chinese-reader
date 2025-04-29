@@ -12,6 +12,11 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
     const chineseRefs = useRef([]);
 
     const getTranslation = async (text, index, language) => {
+        if (text.length > 500) { // 假设 500 是允许的最大字符数
+            alert("文本过长，请控制在 500 字以内");
+            return;
+        }
+
         const url = "https://dharmamitra.org/api/translation-no-stream/";
 
         try {
@@ -52,6 +57,11 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
     };
 
     const analyzeGrammar = async (text, index, language) => {
+        if (text.length > 500) { // 假设 500 是允许的最大字符数
+            alert("文本过长，请控制在 500 字以内");
+            return;
+        }
+
         const url = "https://dharmamitra.org/api/tagging/";
         const payload = {
             input_sentence: text,
@@ -172,7 +182,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <button
                         style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
-                        onClick={() => {getTranslation(paragraph, index, language);}}
+                        onClick={() => getTranslation(paragraph, index, language)}
                     >
                         翻译
                     </button>
