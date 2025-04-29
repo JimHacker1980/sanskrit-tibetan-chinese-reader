@@ -238,47 +238,34 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         ));
     };
 
-    const exportToJson = (text, translations, language) => {
+    const exportToJson = async (text, translations, language) => {
         const paragraphs = text.split('\n');
         const data = paragraphs.map((paragraph, index) => ({
             text: paragraph,
             translation: translations[language]?.[index] || {},
         }));
 
-        const fileName = prompt("请输入导出的文件名：", `${language}-export`);
-        if (!fileName) {
-            alert("导出已取消。");
-            return;
-        }
+        const fileHandle = await window.showDirectoryPicker();
 
         // 导出 JSON 文件
-        const jsonBlob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const jsonUrl = URL.createObjectURL(jsonBlob);
-        const jsonLink = document.createElement('a');
-        jsonLink.href = jsonUrl;
-        jsonLink.download = `${fileName}.json`;
-        jsonLink.click();
-        URL.revokeObjectURL(jsonUrl);
+        const jsonFile = await fileHandle.getFileHandle(`${language}-export.json`, { create: true });
+        const jsonWritable = await jsonFile.createWritable();
+        await jsonWritable.write(JSON.stringify(data, null, 2));
+        await jsonWritable.close();
 
         // 导出中文翻译 TXT 文件
         const chineseText = paragraphs.map((_, index) => translations[language]?.[index]?.chinese || '').join('\n');
-        const chineseBlob = new Blob([chineseText], { type: 'text/plain' });
-        const chineseUrl = URL.createObjectURL(chineseBlob);
-        const chineseLink = document.createElement('a');
-        chineseLink.href = chineseUrl;
-        chineseLink.download = `${fileName}-chinese.txt`;
-        chineseLink.click();
-        URL.revokeObjectURL(chineseUrl);
+        const chineseFile = await fileHandle.getFileHandle(`${language}-chinese.txt`, { create: true });
+        const chineseWritable = await chineseFile.createWritable();
+        await chineseWritable.write(chineseText);
+        await chineseWritable.close();
 
         // 导出英文翻译 TXT 文件
         const englishText = paragraphs.map((_, index) => translations[language]?.[index]?.english || '').join('\n');
-        const englishBlob = new Blob([englishText], { type: 'text/plain' });
-        const englishUrl = URL.createObjectURL(englishBlob);
-        const englishLink = document.createElement('a');
-        englishLink.href = englishUrl;
-        englishLink.download = `${fileName}-english.txt`;
-        englishLink.click();
-        URL.revokeObjectURL(englishUrl);
+        const englishFile = await fileHandle.getFileHandle(`${language}-english.txt`, { create: true });
+        const englishWritable = await englishFile.createWritable();
+        await englishWritable.write(englishText);
+        await englishWritable.close();
     };
 
     const handleJsonUpload = (event, onChange, language) => {
