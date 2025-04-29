@@ -42,7 +42,9 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                         chinese: chineseResponse.data || "翻译失败",
                     },
                 };
+                console.log(translations);
                 setTranslations(updatedTranslations);
+                console.log(translations);
             } else {
                 alert(`翻译失败，状态码: 英文(${englishResponse.status}), 中文(${chineseResponse.status})`);
             }
@@ -171,14 +173,54 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <button
                         style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
-                        onClick={() => getTranslation(paragraph, index, language)}
+                        onClick={() => {getTranslation(paragraph, index, language);console.log(translations)}}
                     >
                         翻译
                     </button>
-                    <div style={{ fontStyle: 'italic', flex: 1 }}>
-                        {translations[language]?.[index]?.english || "点击翻译按钮获取英文结果"}
-                        <br />
-                        {translations[language]?.[index]?.chinese || "点击翻译按钮获取中文结果"}
+                    <div style={{ fontStyle: 'italic', flex: 1 }} id="TranslationDiv">
+                        <span
+                            contentEditable
+                            suppressContentEditableWarning
+                            style={{
+                                display: 'block',
+                                padding: '4px',
+                                border: '1px solid transparent',
+                                fontSize: '14px',
+                                marginBottom: '0.5rem',
+                                outline: 'none',
+                                cursor: 'text',
+                            }}
+                            onBlur={(e) => {
+                                const updatedTranslations = { ...translations };
+                                if (!updatedTranslations[language]) updatedTranslations[language] = {};
+                                if (!updatedTranslations[language][index]) updatedTranslations[language][index] = {};
+                                updatedTranslations[language][index].english = e.target.textContent;
+                                setTranslations(updatedTranslations);
+                            }}
+                        >
+                            {translations[language]?.[index]?.english || "点击翻译按钮获取英文结果"}
+                        </span>
+                        <span
+                            contentEditable
+                            suppressContentEditableWarning
+                            style={{
+                                display: 'block',
+                                padding: '4px',
+                                border: '1px solid transparent',
+                                fontSize: '14px',
+                                outline: 'none',
+                                cursor: 'text',
+                            }}
+                            onBlur={(e) => {
+                                const updatedTranslations = { ...translations };
+                                if (!updatedTranslations[language]) updatedTranslations[language] = {};
+                                if (!updatedTranslations[language][index]) updatedTranslations[language][index] = {};
+                                updatedTranslations[language][index].chinese = e.target.textContent;
+                                setTranslations(updatedTranslations);
+                            }}
+                        >
+                            {translations[language]?.[index]?.chinese || "点击翻译按钮获取中文结果"}
+                        </span>
                     </div>
                 </div>
                 <button
@@ -194,6 +236,80 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                 <div style={{ height: maxHeights[index] - (refs.current[index]?.offsetHeight || 0) }}></div>
             </div>
         ));
+    };
+
+    const exportToJson = (text, translations, language) => {
+        const paragraphs = text.split('\n');
+        const data = paragraphs.map((paragraph, index) => ({
+            text: paragraph,
+            translation: translations[language]?.[index] || {},
+        }));
+
+        const fileName = prompt("请输入导出的文件名：", `${language}-export`);
+        if (!fileName) {
+            alert("导出已取消。");
+            return;
+        }
+
+        // 导出 JSON 文件
+        const jsonBlob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const jsonUrl = URL.createObjectURL(jsonBlob);
+        const jsonLink = document.createElement('a');
+        jsonLink.href = jsonUrl;
+        jsonLink.download = `${fileName}.json`;
+        jsonLink.click();
+        URL.revokeObjectURL(jsonUrl);
+
+        // 导出中文翻译 TXT 文件
+        const chineseText = paragraphs.map((_, index) => translations[language]?.[index]?.chinese || '').join('\n');
+        const chineseBlob = new Blob([chineseText], { type: 'text/plain' });
+        const chineseUrl = URL.createObjectURL(chineseBlob);
+        const chineseLink = document.createElement('a');
+        chineseLink.href = chineseUrl;
+        chineseLink.download = `${fileName}-chinese.txt`;
+        chineseLink.click();
+        URL.revokeObjectURL(chineseUrl);
+
+        // 导出英文翻译 TXT 文件
+        const englishText = paragraphs.map((_, index) => translations[language]?.[index]?.english || '').join('\n');
+        const englishBlob = new Blob([englishText], { type: 'text/plain' });
+        const englishUrl = URL.createObjectURL(englishBlob);
+        const englishLink = document.createElement('a');
+        englishLink.href = englishUrl;
+        englishLink.download = `${fileName}-english.txt`;
+        englishLink.click();
+        URL.revokeObjectURL(englishUrl);
+    };
+
+    const handleJsonUpload = (event, onChange, language) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    const text = data.map(item => item.text).join('\n');
+
+                    // 更新翻译状态
+                    const updatedTranslations = { ...translations };
+                    updatedTranslations[language] = data.reduce((acc, item, index) => {
+                        acc[index] = {
+                            english: item.translation.english || "",
+                            chinese: item.translation.chinese || "",
+                        };
+                        return acc;
+                    }, {});
+                    
+                    setTranslations(updatedTranslations);
+                    onChange(text);
+                    
+                    
+                } catch (error) {
+                    alert('导入的文件格式不正确，请选择正确的 JSON 文件。');
+                }
+            };
+            reader.readAsText(file);
+        }
     };
 
     useEffect(() => {
@@ -227,18 +343,64 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>梵语</h2>
+                <label style={{ cursor: 'pointer', marginBottom: '1rem' }}>
+                    导入json文件
+                </label>
+                <input
+                    id ="sanskritFileInput"
+                    type="file"
+                    accept="application/json"
+                    style={{ marginBottom: '1rem' }}
+                    onChange={(e) => handleJsonUpload(e, onSanskritChange, "sanskrit")}
+                />
+                <button
+                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px' }}
+                    onClick={() => exportToJson(sanskritText, translations, 'sanskrit')}
+                >
+                    导出梵语
+                </button>
                 {formatText(sanskritText, onSanskritChange, 'sanskrit', sanskritRefs)}
             </div>
             <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>藏语</h2>
+                <label style={{ cursor: 'pointer', marginBottom: '1rem' }}>
+                    导入json文件
+                </label>
+                <input
+                    type="file"
+                    accept="application/json"
+                    style={{ marginBottom: '1rem' }}
+                    onChange={(e) => handleJsonUpload(e, onTibetanChange, 'tibetan')}
+                />
+                <button
+                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px' }}
+                    onClick={() => exportToJson(tibetanText, translations, 'tibetan')}
+                >
+                    导出藏语
+                </button>
                 {formatText(tibetanText, onTibetanChange, 'tibetan', tibetanRefs)}
             </div>
             <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>汉语或其他语言。</h2>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>汉语或其他语言</h2>
+                <label style={{ cursor: 'pointer', marginBottom: '1rem' }}>
+                    导入json文件
+                </label>
+                <input
+                    type="file"
+                    accept="application/json"
+                    style={{ marginBottom: '1rem' }}
+                    onChange={(e) => handleJsonUpload(e, onChineseChange, 'chinese')}
+                />
+                <button
+                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px' }}
+                    onClick={() => exportToJson(chineseText, translations, 'chinese')}
+                >
+                    导出汉语
+                </button>
                 {formatText(chineseText, onChineseChange, 'chinese', chineseRefs)}
             </div>
         </div>
     );
 };
 
-export default ReadingArea;    
+export default ReadingArea;
