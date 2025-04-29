@@ -18,4 +18,10 @@ textarea {
     border: 1px solid #ccc;
     padding: 8px;
     font-size: 16px;
+    font-family: 'Times New Roman', serif; /* 设置字体 */
+    line-height: 1.5; /* 调整行高 */
+    unicode-bidi: normal; /* 明确双向排版规则 */
+    direction: ltr; /* 从左到右排版 */
+    display: flex; /* 采用 flex 布局 */
+    flex-direction: column; /* 垂直排列 */
 }
