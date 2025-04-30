@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-
 const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange, onTibetanChange, onChineseChange }) => {
     const [translations, setTranslations] = useState({});
     const [analyses, setAnalyses] = useState({});
     const [details, setDetails] = useState({});
     const [maxHeights, setMaxHeights] = useState([]);
+    const [queryResult, setQueryResult] = useState('');
+    const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+    const [popupData, setPopupData] = useState({
+        isOpen: false,
+        selectedText: '',
+        language: '',
+        index: 0,
+        position: { left: 0, top: 0 }
+    });
 
     const sanskritRefs = useRef([]);
     const tibetanRefs = useRef([]);
@@ -103,150 +111,366 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         });
     };
 
+    const handleSelection = (selectedText, language, index, position) => {
+        if (selectedText.trim()) {
+            setPopupData({
+                isOpen: true,
+                selectedText,
+                language,
+                index,
+                position
+            });
+        }
+    };
+
+    const handleQuery = async () => {
+        const { selectedText, language } = popupData;
+        const query = selectedText.trim();
+        let url = '';
+        // 天城体和拉丁转写到Harvard - Kyoto转写的映射表
+        const sanskritToHKMap = {
+            // 元音
+            'अ': 'a', 'आ': 'A','ā': 'A', 'इ': 'i', 'ई': 'I', 'ī': 'I', 'उ': 'u', 'ऊ': 'U','ū': 'U',
+            'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
+            'ऋ': 'R','ṛ': 'R', 'ॠ': 'RR','ṝ': 'RR', 'ऌ': 'lR','ḷ': 'lR', 'ॡ': 'lRR','ḹ': 'lRR',
+            ' ा': 'A', ' ि': 'i', ' ी': 'I',  ' ु': 'u', ' ू': 'U',
+            ' े': 'e', ' ै': 'ai', ' ो': 'o', 'ौ': 'au',
+            ' ृ': 'R', "ॄ": 'RR', "ॢ": 'lR', "ॣ": 'lRR',
+            ' ्': '',
+            // 鼻音和送气符
+            'ं': 'M', 'ṃ': 'aM', 'ः': 'H', 'ḥ': 'H',
+            // 辅音
+            'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'G','ṅ': 'G',
+            'च': 'c', 'छ': 'ch', 'ज': 'j', 'झ': 'jh', 'ञ': 'J','ñ': 'J',
+            'ṭ': 'T', 'ṭh': 'Th', 'ḍ': 'D', 'ḍha': 'Dh', 'ṇ': 'N',
+            'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+            'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+            'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v',
+            'श': 'z', 'ष': 'S', 'ś': 'z', 'ṣ': 'S', 'स': 's', 'ह': 'h', 'ळ': 'L','ḻ': 'L'
+        };
+    
+        // 转换函数
+        const convertToHK = (text) => {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                if (sanskritToHKMap[text[i]]) {
+                    result += sanskritToHKMap[text[i]];
+                } else if (i < text.length - 1 && sanskritToHKMap[text.slice(i, i + 2)]) {
+                    result += sanskritToHKMap[text.slice(i, i + 2)];
+                    i++;
+                } else {
+                    result += text[i];
+                }
+            }
+            return result;
+        };
+
+        // 用于存储藏语转写数据的对象
+        const tibetanTransliterationMap = {};
+        const loadTibetanTransliteration = async () => {
+            try {
+                const response = await fetch('/src/data/tibetan_transliteration.json');
+                const data = await response.json();
+                Object.assign(tibetanTransliterationMap, data);
+            } catch (error) {
+                console.error('加载藏语转写文件出错:', error);
+            }
+        };
+
+
+        const convertTibetan = (text) => {
+            let isTibetan = /[\u0F00-\u0FFF]/.test(text);
+            let words;
+            if (isTibetan) {
+                words = text.split('་');
+            } else {
+                words = text.split(' ');
+            }
+            let result = '';
+            for (let i = 0; i < words.length; i++) {
+                let word = words[i];
+                if (word) {
+                    if (isTibetan) {
+                        if (tibetanTransliterationMap[word]) {
+                            result += tibetanTransliterationMap[word];
+                        } else {
+                            throw new Error(`未找到藏文词 "${word}" 的转写`);
+                        }
+                        if (i < words.length - 1) {
+                            if (tibetanTransliterationMap['་']) {
+                                result += tibetanTransliterationMap['་'];
+                            } else {
+                                throw new Error('未找到藏文符号 "་" 的转写');
+                            }
+                        }
+                    } else {
+                        let convertedWord = word.replace(/'/g, '%27');
+                        if (tibetanTransliterationMap[convertedWord]) {
+                            result += tibetanTransliterationMap[convertedWord];
+                        } else {
+                            // 若不是藏文且未找到转写，直接使用原词
+                            result += convertedWord;
+                        }
+                        if (i < words.length - 1) {
+                            if (tibetanTransliterationMap[' ']) {
+                                result += tibetanTransliterationMap[' '];
+                            } else {
+                                // 若未找到空格转写，使用原空格
+                                result += ' ';
+                            }
+                        }
+                    }
+                }
+            }
+            // 删除尾部的 %20 符号
+            result = result.replace(/%20$/, '');
+            return result;
+        };    
+    
+        if (language ==='sanskrit') {
+            const hkQuery = convertToHK(query);
+            url = `https://www.sanskrit-lexicon.uni-koeln.de/scans/MWScan/2020/web/webtc/indexcaller.php?key=${encodeURIComponent(hkQuery)}`;
+        } else if (language === 'tibetan') {
+                // 加载藏语转写数据
+            await loadTibetanTransliteration();
+            try {
+                const transliteratedQuery = convertTibetan(query);
+                const encodedQuery = encodeURIComponent(transliteratedQuery);
+                url = `https://dictionary.christian-steinert.de/#{"activeTerm":"${encodedQuery}","lang":"tib","inputLang":"tib","currentListTerm":"${encodedQuery}","forceLeftSideVisible":true,"offset":0}`;
+            } catch (error) {
+                console.error('藏文转换出错:', error);
+                return;
+            }
+        } else if (language === 'chinese') {
+            url = `https://www.zdic.net/hans/${encodeURIComponent(query)}`;
+        }
+    
+        try {
+            // 为每个语言设置不同的窗口名称
+            let windowName = '';
+            if (language ==='sanskrit') {
+                windowName ='sanskritDictionaryWindow';
+            } else if (language === 'tibetan') {
+                windowName = 'tibetanDictionaryWindow';
+            } else if (language === 'chinese') {
+                windowName = 'chineseDictionaryWindow';
+            }
+    
+            // 打开或更新窗口
+            window.open(url, windowName, 'noopener noreferrer');
+        } catch (error) {
+            console.error('查询出错:', error);
+        }
+    
+        setPopupData(prev => ({...prev, isOpen: false }));
+    };    
+
+    // 处理点击小窗口外部，关闭小窗口
+    const ClosePopUp = (e) => {
+        const popup = document.getElementById('popup-window');
+        if (popup &&!popup.contains(e.target)) {
+            // 设置一个 10 秒（10000 毫秒）的延迟
+            setTimeout(() => {
+                setPopupData(prev => ({...prev, isOpen: false }));
+            }, 0);
+        }
+    };
+    const handleSelectionChange = () => {
+        const selectedText = window.getSelection().toString();
+        if (!selectedText && popupData.isOpen) {
+            ClosePopUp({ target: null });
+        }
+    };
+
+    // 格式化文本并渲染相关组件
     const formatText = (text, onChange, language, refs) => {
         const paragraphs = text.split('\n');
 
         return paragraphs.map((paragraph, index) => (
             <div key={index} style={{ marginBottom: '1rem', border: '1px solid #ccc', padding: '8px' }}>
                 <div ref={(el) => refs.current[index] = el}>
-                <textarea
-                    style={{
-                        resize: 'none',
-                        border: '1px solid #ccc',
-                        padding: '8px',
-                        fontSize: '16px',
-                        fontFamily: 'Times New Roman , sans-serif',
-                        width: '100%',
-                        marginBottom: '1rem',
-                        overflow: 'hidden',
-                    }}
-                    value={paragraph}
-                    onChange={(e) => {
-                        const updatedParagraphs = [...paragraphs];
-                        updatedParagraphs[index] = e.target.value;
-                        onChange(updatedParagraphs.join('\n'));
-                    }}
-                    rows={1}
-                    ref={(textarea) => {
-                        if (textarea) {
-                            textarea.style.height = 'auto'; // Reset height to auto to recalculate
-                            textarea.style.height = `${textarea.scrollHeight}px`; // Set height to scrollHeight
-                        }
-                    }}
-                    onInput={(e) => {
-                        e.target.style.height = 'auto'; // Reset height to auto to recalculate
-                        e.target.style.height = `${e.target.scrollHeight}px`; // Set height to scrollHeight
-                    }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                    <button
-                        style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
-                        onClick={() => analyzeGrammar(paragraph, index, language)}
-                    >
-                        解析
-                    </button>
-                    {analyses[language]?.[index] && analyses[language][index].map((entry, idx) => (
+                    <textarea
+                        style={{
+                            resize: 'none',
+                            border: '1px solid #ccc',
+                            padding: '8px',
+                            fontSize: '16px',
+                            fontFamily: 'Times New Roman, sans-serif',
+                            width: '100%',
+                            marginBottom: '1rem',
+                            overflow: 'hidden',
+                        }}
+                        value={paragraph}
+                        onSelect={(e) => {
+                            const selectedText = window.getSelection().toString();
+                            const range = window.getSelection().getRangeAt(0);
+                            const rect = range.getBoundingClientRect();
+                            const position = {
+                                left: rect.left + window.scrollX,
+                                top: rect.top + window.scrollY
+                            };
+                            handleSelection(selectedText, language, index, position);
+                        }}
+                        onChange={(e) => {
+                            const updatedParagraphs = [...paragraphs];
+                            updatedParagraphs[index] = e.target.value;
+                            onChange(updatedParagraphs.join('\n'));
+                        }}
+                        rows={1}
+                        ref={(textarea) => {
+                            if (textarea) {
+                                textarea.style.height = 'auto';
+                                textarea.style.height = `${textarea.scrollHeight}px`;
+                            }
+                        }}
+                        onInput={(e) => {
+                            e.target.style.height = 'auto';
+                            e.target.style.height = `${e.target.scrollHeight}px`;
+                        }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                         <button
-                            key={idx}
-                            style={{ margin: '4px', padding: '4px 8px', fontSize: '12px', whiteSpace: 'nowrap' }}
-                            onClick={() => showDetails({ ...entry, paragraphIndex: index }, language)}
+                            style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
+                            onClick={() => analyzeGrammar(paragraph, index, language)}
                         >
-                            {entry.unsandhied}
+                            解析
                         </button>
-                    ))}
-                </div>
-                {details[language]?.paragraphIndex === index && (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem', fontSize: '12px' }}>
-                        <thead>
-                            <tr>
-                                <th style={{ border: '1px solid #ccc', padding: '8px' }}>属性</th>
-                                <th style={{ border: '1px solid #ccc', padding: '8px' }}>值</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style={{ border: '1px solid #ccc', padding: '8px' }}>Lemma</td>
-                                <td style={{ border: '1px solid #ccc', padding: '8px' }}>{details[language].lemma}</td>
-                            </tr>
-                            <tr>
-                                <td style={{ border: '1px solid #ccc', padding: '8px' }}>Tag</td>
-                                <td style={{ border: '1px solid #ccc', padding: '8px' }}>{details[language].tag}</td>
-                            </tr>
-                            <tr>
-                                <td style={{ border: '1px solid #ccc', padding: '8px' }}>Meanings</td>
-                                <td style={{ border: '1px solid #ccc', padding: '8px' }}>{details[language].meanings.join(', ')}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <button
-                        style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
-                        onClick={() => getTranslation(paragraph, index, language)}
-                    >
-                        翻译
-                    </button>
-                    <div style={{ fontStyle: 'italic', flex: 1 }} id="TranslationDiv">
-                        <span
-                            contentEditable
-                            suppressContentEditableWarning
-                            style={{
-                                display: 'block',
-                                padding: '4px',
-                                border: '1px solid transparent',
-                                fontSize: '14px',
-                                marginBottom: '0.5rem',
-                                outline: 'none',
-                                cursor: 'text',
-                            }}
-                            onBlur={(e) => {
-                                const updatedTranslations = { ...translations };
-                                if (!updatedTranslations[language]) updatedTranslations[language] = {};
-                                if (!updatedTranslations[language][index]) updatedTranslations[language][index] = {};
-                                updatedTranslations[language][index].english = e.target.textContent;
-                                setTranslations(updatedTranslations);
-                            }}
-                        >
-                            {translations[language]?.[index]?.english || "点击翻译按钮获取英文结果"}
-                        </span>
-                        <span
-                            contentEditable
-                            suppressContentEditableWarning
-                            style={{
-                                display: 'block',
-                                padding: '4px',
-                                border: '1px solid transparent',
-                                fontSize: '14px',
-                                outline: 'none',
-                                cursor: 'text',
-                            }}
-                            onBlur={(e) => {
-                                const updatedTranslations = { ...translations };
-                                if (!updatedTranslations[language]) updatedTranslations[language] = {};
-                                if (!updatedTranslations[language][index]) updatedTranslations[language][index] = {};
-                                updatedTranslations[language][index].chinese = e.target.textContent;
-                                setTranslations(updatedTranslations);
-                            }}
-                        >
-                            {translations[language]?.[index]?.chinese || "点击翻译按钮获取中文结果"}
-                        </span>
+                        {analyses[language]?.[index] && analyses[language][index].map((entry, idx) => (
+                            <button
+                                key={idx}
+                                style={{ margin: '4px', padding: '4px 8px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                                onClick={() => showDetails({...entry, paragraphIndex: index }, language)}
+                            >
+                                {entry.unsandhied}
+                            </button>
+                        ))}
                     </div>
-                </div>
-                <button
-                    style={{ padding: '4px 8px', fontSize: '12px', width: '100%' }}
-                    onClick={() => {
-                        const updatedParagraphs = paragraphs.filter((_, i) => i !== index);
-                        onChange(updatedParagraphs.join('\n'));
-                    }}
-                >
-                    删除
-                </button>
+                    {details[language]?.paragraphIndex === index && (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem', fontSize: '12px' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ border: '1px solid #ccc', padding: '8px' }}>属性</th>
+                                    <th style={{ border: '1px solid #ccc', padding: '8px' }}>值</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>Lemma</td>
+                                    <td
+                                        style={{ border: '1px solid #ccc', padding: '8px' }}
+                                        onSelect={(e) => {
+                                            const selectedText = window.getSelection().toString();
+                                            const range = window.getSelection().getRangeAt(0);
+                                            const rect = range.getBoundingClientRect();
+                                            const position = {
+                                                left: rect.left + window.scrollX,
+                                                top: rect.top + window.scrollY + 5
+                                            };
+                                            handleSelection(selectedText, language, index, position);
+                                        }}
+                                    >
+                                        {details[language].lemma}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>Tag</td>
+                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>{details[language].tag}</td>
+                                </tr>
+                                <tr>
+                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>Meanings</td>
+                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>{details[language].meanings.join(', ')}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <button
+                            style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
+                            onClick={() => getTranslation(paragraph, index, language)}
+                        >
+                            翻译
+                        </button>
+                        <div style={{ fontStyle: 'italic', flex: 1 }} id="TranslationDiv">
+                            <span
+                                contentEditable
+                                suppressContentEditableWarning
+                                style={{
+                                    display: 'block',
+                                    padding: '4px',
+                                    border: '1px solid transparent',
+                                    fontSize: '14px',
+                                    marginBottom: '0.5rem',
+                                    outline: 'none',
+                                    cursor: 'text',
+                                }}
+                                onBlur={(e) => {
+                                    const updatedTranslations = {...translations };
+                                    if (!updatedTranslations[language]) updatedTranslations[language] = {};
+                                    if (!updatedTranslations[language][index]) updatedTranslations[language][index] = {};
+                                    updatedTranslations[language][index].english = e.target.textContent;
+                                    setTranslations(updatedTranslations);
+                                }}
+                                onSelect={(e) => {
+                                    const selectedText = window.getSelection().toString();
+                                    const range = window.getSelection().getRangeAt(0);
+                                    const rect = range.getBoundingClientRect();
+                                    const position = {
+                                        left: rect.left + window.scrollX,
+                                        top: rect.top + window.scrollY + 40
+                                    };
+                                    handleSelection(selectedText, language, index, position);
+                                }}
+                            >
+                                {translations[language]?.[index]?.english || "点击翻译按钮获取英文结果"}
+                            </span>
+                            <span
+                                contentEditable
+                                suppressContentEditableWarning
+                                style={{
+                                    display: 'block',
+                                    padding: '4px',
+                                    border: '1px solid transparent',
+                                    fontSize: '14px',
+                                    outline: 'none',
+                                    cursor: 'text',
+                                }}
+                                onBlur={(e) => {
+                                    const updatedTranslations = {...translations };
+                                    if (!updatedTranslations[language]) updatedTranslations[language] = {};
+                                    if (!updatedTranslations[language][index]) updatedTranslations[language][index] = {};
+                                    updatedTranslations[language][index].chinese = e.target.textContent;
+                                    setTranslations(updatedTranslations);
+                                }}
+                                onSelect={(e) => {
+                                    const selectedText = window.getSelection().toString();
+                                    const range = window.getSelection().getRangeAt(0);
+                                    const rect = range.getBoundingClientRect();
+                                    const position = {
+                                        left: rect.left + window.scrollX,
+                                        top: rect.top + window.scrollY + 35
+                                    };
+                                    handleSelection(selectedText, language, index, position);
+                                }}
+                            >
+                                {translations[language]?.[index]?.chinese || "点击翻译按钮获取中文结果"}
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        style={{ padding: '4px 8px', fontSize: '12px', width: '100%' }}
+                        onClick={() => {
+                            const updatedParagraphs = paragraphs.filter((_, i) => i!== index);
+                            onChange(updatedParagraphs.join('\n'));
+                        }}
+                    >
+                        删除
+                    </button>
                 </div>
                 <div style={{ height: maxHeights[index] - (refs.current[index]?.offsetHeight || 0) }}></div>
             </div>
         ));
     };
-
+    
     const exportToJson = async (text, translations, language) => {
         const paragraphs = text.split('\n');
         const data = paragraphs.map((paragraph, index) => ({
@@ -254,24 +478,30 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
             translation: translations[language]?.[index] || {},
         }));
 
+        const fileName = prompt("请输入导出的文件名：", `${language}-export`);
+        if (!fileName) {
+            alert("导出已取消。");
+            return;
+        }
+
         const fileHandle = await window.showDirectoryPicker();
 
         // 导出 JSON 文件
-        const jsonFile = await fileHandle.getFileHandle(`${language}-export.json`, { create: true });
+        const jsonFile = await fileHandle.getFileHandle(`${fileName}.json`, { create: true });
         const jsonWritable = await jsonFile.createWritable();
         await jsonWritable.write(JSON.stringify(data, null, 2));
         await jsonWritable.close();
 
         // 导出中文翻译 TXT 文件
         const chineseText = paragraphs.map((_, index) => translations[language]?.[index]?.chinese || '').join('\n');
-        const chineseFile = await fileHandle.getFileHandle(`${language}-chinese.txt`, { create: true });
+        const chineseFile = await fileHandle.getFileHandle(`${fileName}-chinese.txt`, { create: true });
         const chineseWritable = await chineseFile.createWritable();
         await chineseWritable.write(chineseText);
         await chineseWritable.close();
 
         // 导出英文翻译 TXT 文件
         const englishText = paragraphs.map((_, index) => translations[language]?.[index]?.english || '').join('\n');
-        const englishFile = await fileHandle.getFileHandle(`${language}-english.txt`, { create: true });
+        const englishFile = await fileHandle.getFileHandle(`${fileName}-english.txt`, { create: true });
         const englishWritable = await englishFile.createWritable();
         await englishWritable.write(englishText);
         await englishWritable.close();
@@ -309,6 +539,37 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
     };
 
     useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.ctrlKey && popupData.isOpen) {
+                setIsCtrlPressed(true);
+                handleQuery();
+            }
+        };
+
+        const handleKeyUp = (e) => {
+            if (!e.ctrlKey) {
+                setIsCtrlPressed(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        const handleScroll = () => {
+            if (popupData.isOpen) {
+                const range = window.getSelection().getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+                const newPosition = {
+                    left: rect.left + window.scrollX,
+                    top: rect.bottom + window.scrollY + 5 
+                };
+                setPopupData(prev => ({...prev, position: newPosition }));
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+
+        document.addEventListener('selectionchange', handleSelectionChange);
+        
         const calculateMaxHeights = () => {
             const newMaxHeights = [];
             const maxLength = Math.max(sanskritRefs.current.length, tibetanRefs.current.length, chineseRefs.current.length);
@@ -332,8 +593,12 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
 
         return () => {
             resizeObserver.disconnect();
+            window.removeEventListener('scroll', handleScroll);
+            document.removeEventListener('selectionchange', handleSelectionChange);
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
         };
-    }, [sanskritText, tibetanText, chineseText]);
+    }, [sanskritText, tibetanText, chineseText, popupData?popupData.isOpen:undefined]);
 
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -395,6 +660,23 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                 </button>
                 {formatText(chineseText, onChineseChange, 'chinese', chineseRefs)}
             </div>
+            {popupData.isOpen && (
+                <div
+                    id="popup-window"
+                    style={{
+                        position: 'absolute',
+                        left: popupData.position.left,
+                        top: popupData.position.top,
+                        zIndex: 1000,
+                        backgroundColor: 'white',
+                        border: '1px solid #ccc',
+                        padding: '8px',
+                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                    }}
+                >
+                    <p>{isCtrlPressed ? '松开 Ctrl 执行查询' : '按 Ctrl 查询'}</p>
+                </div>
+            )}
         </div>
     );
 };
