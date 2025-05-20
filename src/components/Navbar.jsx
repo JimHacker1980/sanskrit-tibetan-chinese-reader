@@ -1,10 +1,20 @@
 import React from 'react';
+import MITRA from '../assets/MITRA.png';
+import Tsadra from '../assets/Tsadra.png';
 
 const Navbar = ({ onImportSanskrit, onImportTibetan, onImportChinese }) => {
     return (
         <nav className="bg-gray-800 p-4">
             <div className="container mx-auto flex justify-between items-center">
-                <h1 className="text-white text-xl font-bold">梵藏汉阅读器</h1>
+                <div style={{ display: 'flex', alignItems: 'center', borderBottom: '2px solid #ccc', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
+                    <h1 style={{ color: 'black', fontSize: '3.25rem', fontWeight: 'bold'}}>梵藏汉阅读器</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', marginLeft: '1rem', gap: '0.5rem' }}>
+                        <img src={MITRA} alt="MITRA" style={{ height: '5rem', width: 'auto' }} />
+                        <img src={Tsadra} alt="Tsadra" style={{ height: '5rem', width: 'auto' }} />
+                    </div>
+                </div>
+                <p style={{ color: 'black', fontSize: '1.25rem'}}>由Dharmamitra.org和Tsadra Foundation支持</p>
+
                 <div className="flex space-x-4">
                     <input
                         type="file"
@@ -42,4 +52,4 @@ const Navbar = ({ onImportSanskrit, onImportTibetan, onImportChinese }) => {
     );
 };
 
-export default Navbar;    
+export default Navbar;
