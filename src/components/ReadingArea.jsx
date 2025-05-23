@@ -14,6 +14,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         index: 0,
         position: { left: 0, top: 0 }
     });
+    const [sanskritFileName, setSanskritFileName] = useState("");
 
     const sanskritRefs = useRef([]);
     const tibetanRefs = useRef([]);
@@ -287,18 +288,23 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         const paragraphs = text.split('\n');
 
         return paragraphs.map((paragraph, index) => (
-            <div key={index} style={{ marginBottom: '1rem', border: '1px solid #ccc', padding: '8px' }}>
+            <div key={index} style={{ maxWidth: '420px', width: '100%', margin: '0 auto 1rem auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.6rem', boxShadow: '0 1px 4px #0001', padding: '0.7rem', transition: 'box-shadow 0.2s', position: 'relative', minWidth: '0' }}>
                 <div ref={(el) => refs.current[index] = el}>
                     <textarea
                         style={{
                             resize: 'none',
-                            border: '1px solid #ccc',
-                            padding: '8px',
-                            fontSize: '16px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '0.4rem',
+                            padding: '6px',
+                            fontSize: '15px',
                             fontFamily: 'Times New Roman, sans-serif',
-                            width: '100%',
-                            marginBottom: '1rem',
-                            overflow: 'hidden',
+                            width: '96%',
+                            marginBottom: '0.7rem',
+                            background: '#f9fafb',
+                            boxShadow: '0 1px 2px #0001',
+                            outline: 'none',
+                            transition: 'border 0.2s',
+                            minWidth: 0
                         }}
                         value={paragraph}
                         onSelect={(e) => {
@@ -328,9 +334,9 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                             e.target.style.height = `${e.target.scrollHeight}px`;
                         }}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', flexWrap: 'wrap', gap: '4px' }}>
                         <button
-                            style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
+                            style={{ marginRight: '4px', padding: '2px 8px', fontSize: '12px', background: 'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)', color: '#fff', border: 'none', borderRadius: '0.3rem', fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 2px #0001', transition: 'background 0.2s', minWidth: '0' }}
                             onClick={() => analyzeGrammar(paragraph, index, language)}
                         >
                             解析
@@ -338,7 +344,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                         {analyses[language]?.[index] && analyses[language][index].map((entry, idx) => (
                             <button
                                 key={idx}
-                                style={{ margin: '4px', padding: '4px 8px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                                style={{ margin: '2px', padding: '2px 7px', fontSize: '12px', background: '#f3f4f6', color: '#232526', border: '1px solid #e5e7eb', borderRadius: '0.3rem', whiteSpace: 'nowrap', cursor: 'pointer', transition: 'background 0.2s', minWidth: '0' }}
                                 onClick={() => showDetails({...entry, paragraphIndex: index }, language)}
                             >
                                 {entry.unsandhied}
@@ -346,25 +352,25 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                         ))}
                     </div>
                     {details[language]?.paragraphIndex === index && (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem', fontSize: '12px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem', fontSize: '12px', background: '#f9fafb', borderRadius: '0.4rem', overflow: 'hidden', boxShadow: '0 1px 2px #0001' }}>
                             <thead>
                                 <tr>
-                                    <th style={{ border: '1px solid #ccc', padding: '8px' }}>属性</th>
-                                    <th style={{ border: '1px solid #ccc', padding: '8px' }}>值</th>
+                                    <th style={{ border: '1px solid #e5e7eb', padding: '5px', background: '#f3f4f6', color: '#232526' }}>属性</th>
+                                    <th style={{ border: '1px solid #e5e7eb', padding: '5px', background: '#f3f4f6', color: '#232526' }}>值</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>Lemma</td>
+                                    <td style={{ border: '1px solid #e5e7eb', padding: '5px' }}>Lemma</td>
                                     <td
-                                        style={{ border: '1px solid #ccc', padding: '8px' }}
-                                        onSelect={(e) => {
+                                        style={{ border: '1px solid #e5e7eb', padding: '5px', cursor: 'pointer' }}
+                                        onSelect={() => {
                                             const selectedText = window.getSelection().toString();
                                             const range = window.getSelection().getRangeAt(0);
                                             const rect = range.getBoundingClientRect();
                                             const position = {
                                                 left: rect.left + window.scrollX,
-                                                top: rect.top + window.scrollY + 5
+                                                top: rect.top + window.scrollY
                                             };
                                             handleSelection(selectedText, language, index, position);
                                         }}
@@ -373,35 +379,40 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>Tag</td>
-                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>{details[language].tag}</td>
+                                    <td style={{ border: '1px solid #e5e7eb', padding: '5px' }}>Tag</td>
+                                    <td style={{ border: '1px solid #e5e7eb', padding: '5px' }}>{details[language].tag}</td>
                                 </tr>
                                 <tr>
-                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>Meanings</td>
-                                    <td style={{ border: '1px solid #ccc', padding: '8px' }}>{details[language].meanings.join(', ')}</td>
+                                    <td style={{ border: '1px solid #e5e7eb', padding: '5px' }}>Meanings</td>
+                                    <td style={{ border: '1px solid #e5e7eb', padding: '5px' }}>{details[language].meanings.join(', ')}</td>
                                 </tr>
                             </tbody>
                         </table>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.3rem', gap: '4px', flexWrap: 'wrap' }}>
                         <button
-                            style={{ marginRight: '8px', padding: '4px 8px', fontSize: '12px' }}
+                            style={{ marginRight: '4px', padding: '2px 8px', fontSize: '12px', background: 'linear-gradient(90deg, #22c55e 0%, #15803d 100%)', color: '#fff', border: 'none', borderRadius: '0.3rem', fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 2px #0001', transition: 'background 0.2s', minWidth: '0' }}
                             onClick={() => getTranslation(paragraph, index, language)}
                         >
                             翻译
                         </button>
-                        <div style={{ fontStyle: 'italic', flex: 1 }} id="TranslationDiv">
+                        <div style={{ fontStyle: 'italic', flex: 1, minWidth: 0 }} id="TranslationDiv">
                             <span
                                 contentEditable
                                 suppressContentEditableWarning
                                 style={{
                                     display: 'block',
-                                    padding: '4px',
-                                    border: '1px solid transparent',
-                                    fontSize: '14px',
-                                    marginBottom: '0.5rem',
+                                    padding: '3px',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '0.2rem',
+                                    fontSize: '13px',
+                                    marginBottom: '0.3rem',
                                     outline: 'none',
                                     cursor: 'text',
+                                    background: '#f9fafb',
+                                    minHeight: '1.5em',
+                                    transition: 'border 0.2s',
+                                    minWidth: 0
                                 }}
                                 onBlur={(e) => {
                                     const updatedTranslations = {...translations };
@@ -410,13 +421,13 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                                     updatedTranslations[language][index].english = e.target.textContent;
                                     setTranslations(updatedTranslations);
                                 }}
-                                onSelect={(e) => {
+                                onSelect={() => {
                                     const selectedText = window.getSelection().toString();
                                     const range = window.getSelection().getRangeAt(0);
                                     const rect = range.getBoundingClientRect();
                                     const position = {
                                         left: rect.left + window.scrollX,
-                                        top: rect.top + window.scrollY + 40
+                                        top: rect.top + window.scrollY
                                     };
                                     handleSelection(selectedText, language, index, position);
                                 }}
@@ -428,11 +439,16 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                                 suppressContentEditableWarning
                                 style={{
                                     display: 'block',
-                                    padding: '4px',
-                                    border: '1px solid transparent',
-                                    fontSize: '14px',
+                                    padding: '3px',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '0.2rem',
+                                    fontSize: '13px',
                                     outline: 'none',
                                     cursor: 'text',
+                                    background: '#f9fafb',
+                                    minHeight: '1.5em',
+                                    transition: 'border 0.2s',
+                                    minWidth: 0
                                 }}
                                 onBlur={(e) => {
                                     const updatedTranslations = {...translations };
@@ -441,13 +457,13 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                                     updatedTranslations[language][index].chinese = e.target.textContent;
                                     setTranslations(updatedTranslations);
                                 }}
-                                onSelect={(e) => {
+                                onSelect={() => {
                                     const selectedText = window.getSelection().toString();
                                     const range = window.getSelection().getRangeAt(0);
                                     const rect = range.getBoundingClientRect();
                                     const position = {
                                         left: rect.left + window.scrollX,
-                                        top: rect.top + window.scrollY + 35
+                                        top: rect.top + window.scrollY
                                     };
                                     handleSelection(selectedText, language, index, position);
                                 }}
@@ -457,7 +473,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                         </div>
                     </div>
                     <button
-                        style={{ padding: '4px 8px', fontSize: '12px', width: '100%' }}
+                        style={{ padding: '2px 8px', fontSize: '12px', width: '100%', background: '#f87171', color: '#fff', border: 'none', borderRadius: '0.3rem', fontWeight: 600, cursor: 'pointer', marginTop: '0.3rem', boxShadow: '0 1px 2px #0001', transition: 'background 0.2s', minWidth: '0' }}
                         onClick={() => {
                             const updatedParagraphs = paragraphs.filter((_, i) => i!== index);
                             onChange(updatedParagraphs.join('\n'));
@@ -530,7 +546,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                     onChange(text);
                     
                     
-                } catch (error) {
+                } catch {
                     alert('导入的文件格式不正确，请选择正确的 JSON 文件。');
                 }
             };
@@ -598,33 +614,54 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
         };
-    }, [sanskritText, tibetanText, chineseText, popupData?popupData.isOpen:undefined]);
+    }, [sanskritText, tibetanText, chineseText, popupData.isOpen, handleQuery, handleSelectionChange]);
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>梵语</h2>
-                <label style={{ cursor: 'pointer', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#fff', borderRadius: '1rem', boxShadow: '0 4px 24px 0 rgba(0,0,0,0.08)', padding: '2rem 1.5rem', margin: '2rem 0' }}>
+            <div style={{ flex: '1 1 33%', margin: '0 12px', display: 'flex', flexDirection: 'column', background: '#f9fafb', borderRadius: '0.75rem', boxShadow: '0 1px 4px #0001', padding: '1.2rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: '#232526' }}>梵语</h2>
+                <label style={{ cursor: 'pointer', marginBottom: '0.5rem', color: '#2563eb', fontWeight: 600 }}>
                     导入json文件
                 </label>
-                <input
-                    id ="sanskritFileInput"
-                    type="file"
-                    accept="application/json"
-                    style={{ marginBottom: '1rem' }}
-                    onChange={(e) => handleJsonUpload(e, onSanskritChange, "sanskrit")}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                    <label htmlFor="sanskritFileInput" style={{
+                        display: 'inline-block',
+                        padding: '4px 16px',
+                        background: 'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)',
+                        color: '#fff',
+                        borderRadius: '0.4rem',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 2px #0001',
+                        border: 'none',
+                        marginBottom: 0
+                    }}>
+                        选择json文件
+                    </label>
+                    <span style={{ fontSize: '12px', color: '#666', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sanskritFileName}</span>
+                    <input
+                        id="sanskritFileInput"
+                        type="file"
+                        accept="application/json"
+                        style={{ display: 'none' }}
+                        onChange={e => {
+                            setSanskritFileName(e.target.files[0]?.name || "");
+                            handleJsonUpload(e, onSanskritChange, "sanskrit");
+                        }}
+                    />
+                </div>
                 <button
-                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px' }}
+                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px', background: 'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 4px #0001' }}
                     onClick={() => exportToJson(sanskritText, translations, 'sanskrit')}
                 >
                     导出梵语
                 </button>
                 {formatText(sanskritText, onSanskritChange, 'sanskrit', sanskritRefs)}
             </div>
-            <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>藏语</h2>
-                <label style={{ cursor: 'pointer', marginBottom: '1rem' }}>
+            <div style={{ flex: '1 1 33%', margin: '0 12px', display: 'flex', flexDirection: 'column', background: '#f9fafb', borderRadius: '0.75rem', boxShadow: '0 1px 4px #0001', padding: '1.2rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: '#232526' }}>藏语</h2>
+                <label style={{ cursor: 'pointer', marginBottom: '0.5rem', color: '#22c55e', fontWeight: 600 }}>
                     导入json文件
                 </label>
                 <input
@@ -634,16 +671,16 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                     onChange={(e) => handleJsonUpload(e, onTibetanChange, 'tibetan')}
                 />
                 <button
-                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px' }}
+                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px', background: 'linear-gradient(90deg, #22c55e 0%, #15803d 100%)', color: '#fff', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 4px #0001' }}
                     onClick={() => exportToJson(tibetanText, translations, 'tibetan')}
                 >
                     导出藏语
                 </button>
                 {formatText(tibetanText, onTibetanChange, 'tibetan', tibetanRefs)}
             </div>
-            <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>汉语或其他语言</h2>
-                <label style={{ cursor: 'pointer', marginBottom: '1rem' }}>
+            <div style={{ flex: '1 1 33%', margin: '0 12px', display: 'flex', flexDirection: 'column', background: '#f9fafb', borderRadius: '0.75rem', boxShadow: '0 1px 4px #0001', padding: '1.2rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: '#232526' }}>汉语或其他语言</h2>
+                <label style={{ cursor: 'pointer', marginBottom: '0.5rem', color: '#fde047', fontWeight: 600 }}>
                     导入json文件
                 </label>
                 <input
@@ -653,7 +690,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                     onChange={(e) => handleJsonUpload(e, onChineseChange, 'chinese')}
                 />
                 <button
-                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px' }}
+                    style={{ marginBottom: '1rem', padding: '8px', fontSize: '14px', background: 'linear-gradient(90deg, #fde047 0%, #facc15 100%)', color: '#232526', border: 'none', borderRadius: '0.5rem', fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 4px #0001' }}
                     onClick={() => exportToJson(chineseText, translations, 'chinese')}
                 >
                     导出汉语
@@ -670,11 +707,12 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                         zIndex: 1000,
                         backgroundColor: 'white',
                         border: '1px solid #ccc',
-                        padding: '8px',
-                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                        padding: '8px 16px',
+                        borderRadius: '0.5rem',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
                     }}
                 >
-                    <p>{isCtrlPressed ? '松开 Ctrl 执行查询' : '按 Ctrl 查询'}</p>
+                    <p style={{ margin: 0, color: '#2563eb', fontWeight: 600 }}>{isCtrlPressed ? '松开 Ctrl 执行查询' : '按 Ctrl 查询'}</p>
                 </div>
             )}
         </div>
