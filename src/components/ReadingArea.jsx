@@ -297,7 +297,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                             resize: 'none',
                             border: '1px solid #ccc',
                             padding: '8px',
-                            fontSize: '16px',
+                            fontSize: '19px',
                             fontFamily: 'Times New Roman, sans-serif',
                             width: '100%',
                             marginBottom: '1rem',
@@ -460,7 +460,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                         </div>
                     </div>
                     <button
-                        style={{ padding: '4px 8px', fontSize: '12px', width: '100%', background: '#f87171', color: '#fff', border: 'none', borderRadius: '0.3rem', fontWeight: 600, cursor: 'pointer', marginTop: '0.3rem', boxShadow: '0 1px 2px #0001', transition: 'background 0.2s' }}
+                        style={{ padding: '4px 8px', fontSize: '12px', width: '100%', background: '#fff', color: 'rgb(137, 134, 134)', border: '1px solid rgb(221, 208, 208)', borderRadius: '0.3rem', fontWeight: 600, cursor: 'pointer', marginTop: '0.3rem', boxShadow: '0 1px 2px #0001', transition: 'background 0.2s, color 0.2s, border 0.2s' }}
                         onClick={() => {
                             const updatedParagraphs = paragraphs.filter((_, i) => i!== index);
                             onChange(updatedParagraphs.join('\n'));
