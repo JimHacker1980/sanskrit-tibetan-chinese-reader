@@ -22,6 +22,16 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
     const tibetanRefs = useRef([]);
     const chineseRefs = useRef([]);
 
+    const [showTxtDropdown, setShowTxtDropdown] = useState(false);
+    const [showTibetanTxtDropdown, setShowTibetanTxtDropdown] = useState(false);
+    const [showChineseTxtDropdown, setShowChineseTxtDropdown] = useState(false);
+    const [sanskritTxtList, setSanskritTxtList] = useState([]);
+    const [tibetanTxtList, setTibetanTxtList] = useState([]);
+    const [chineseTxtList, setChineseTxtList] = useState([]);
+    const [sanskritLoading, setSanskritLoading] = useState(false);
+    const [tibetanLoading, setTibetanLoading] = useState(false);
+    const [chineseLoading, setChineseLoading] = useState(false);
+
     const getTranslation = async (text, index, language) => {
         if (text.length > 500) { // 假设 500 是允许的最大字符数
             alert("文本过长，请控制在 500 字以内");
@@ -541,6 +551,48 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         }
     };
 
+    // 获取远程 txt 列表
+const fetchTxtList = async (lang) => {
+  let url = '';
+  if (lang === 'sanskrit') url = '/api/sanskrit-txts';
+  if (lang === 'tibetan') url = '/api/tibetan-txts';
+  if (lang === 'chinese') url = '/api/chinese-txts';
+  try {
+    if (lang === 'sanskrit') setSanskritLoading(true);
+    if (lang === 'tibetan') setTibetanLoading(true);
+    if (lang === 'chinese') setChineseLoading(true);
+    const res = await fetch(url);
+    const data = await res.json();
+    if (lang === 'sanskrit') setSanskritTxtList(data);
+    if (lang === 'tibetan') setTibetanTxtList(data);
+    if (lang === 'chinese') setChineseTxtList(data);
+  } catch (e) {
+    alert('获取远程列表失败');
+  } finally {
+    if (lang === 'sanskrit') setSanskritLoading(false);
+    if (lang === 'tibetan') setTibetanLoading(false);
+    if (lang === 'chinese') setChineseLoading(false);
+  }
+};
+
+// 获取远程 txt 内容
+const fetchTxtContent = async (url, onChange, closeDropdown) => {
+  try {
+    // 只允许 fetch public 目录下的资源（以 / 开头）
+    if (!url.startsWith('/')) {
+      alert('仅支持读取本地 public 目录下的 txt 文件，远程资源请通过代理或后端转发获取。');
+      return;
+    }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('网络错误');
+    const txt = await res.text();
+    onChange(txt);
+    closeDropdown(false);
+  } catch (e) {
+    alert('获取文本内容失败');
+  }
+};
+
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.ctrlKey && popupData.isOpen) {
@@ -607,7 +659,7 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ flex: '1 1 33%', margin: '0 8px', display: 'flex', flexDirection: 'column' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>梵语</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', position: 'relative' }}>
                   <label htmlFor="sanskritFileInput" style={{
                     display: 'inline-block',
                     padding: '4px 16px',
@@ -634,6 +686,72 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                       handleJsonUpload(e, onSanskritChange, "sanskrit");
                     }}
                   />
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      style={{
+                        padding: '4px 12px',
+                        background: showTxtDropdown
+                          ? 'linear-gradient(90deg, #6366f1 0%, #2563eb 100%)'
+                          : 'linear-gradient(90deg, #818cf8 0%, #2563eb 100%)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '0.4rem',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        boxShadow: showTxtDropdown
+                          ? '0 2px 8px #6366f155, 0 1px 2px #0001'
+                          : '0 1px 2px #0001',
+                        marginLeft: '4px',
+                        marginRight: '4px',
+                        outline: showTxtDropdown ? '2px solid #6366f1' : 'none',
+                        position: 'relative',
+                        zIndex: 2,
+                        transition: 'background 0.2s, box-shadow 0.2s, outline 0.2s'
+                      }}
+                      onClick={() => {
+                        setShowTxtDropdown(v => !v);
+                        if (!showTxtDropdown && sanskritTxtList.length === 0) fetchTxtList('sanskrit');
+                      }}
+                    >
+                      从仓库导入
+                    </button>
+                    {showTxtDropdown && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '110%',
+                        left: 0,
+                        background: '#fff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.4rem',
+                        boxShadow: '0 2px 8px #0002',
+                        minWidth: '180px',
+                        zIndex: 10
+                      }}>
+                        {sanskritLoading ? <div style={{padding:'8px 16px'}}>加载中...</div> :
+                          (sanskritTxtList.length === 0 ? <div style={{padding:'8px 16px'}}>暂无数据</div> :
+                            sanskritTxtList.map((file, idx) => (
+                              <div
+                                key={file.name}
+                                style={{
+                                  padding: '8px 16px',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  color: '#232526',
+                                  background: idx % 2 === 0 ? '#f3f4f6' : '#fff',
+                                  borderBottom: idx === sanskritTxtList.length - 1 ? 'none' : '1px solid #e5e7eb',
+                                  borderRadius: idx === 0 ? '0.4rem 0.4rem 0 0' : idx === sanskritTxtList.length - 1 ? '0 0 0.4rem 0.4rem' : '0'
+                                }}
+                                onClick={() => fetchTxtContent(file.url, onSanskritChange, setShowTxtDropdown)}
+                              >
+                                {file.name}
+                              </div>
+                            ))
+                          )
+                        }
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button
                     style={{
@@ -689,6 +807,72 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                       handleJsonUpload(e, onTibetanChange, "tibetan");
                     }}
                   />
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      style={{
+                        padding: '4px 12px',
+                        background: showTibetanTxtDropdown
+                          ? 'linear-gradient(90deg, #22d3ee 0%, #22c55e 100%)'
+                          : 'linear-gradient(90deg, #6ee7b7 0%, #22c55e 100%)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '0.4rem',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        boxShadow: showTibetanTxtDropdown
+                          ? '0 2px 8px #22d3ee55, 0 1px 2px #0001'
+                          : '0 1px 2px #0001',
+                        marginLeft: '4px',
+                        marginRight: '4px',
+                        outline: showTibetanTxtDropdown ? '2px solid #22d3ee' : 'none',
+                        position: 'relative',
+                        zIndex: 2,
+                        transition: 'background 0.2s, box-shadow 0.2s, outline 0.2s'
+                      }}
+                      onClick={() => {
+                        setShowTibetanTxtDropdown(v => !v);
+                        if (!showTibetanTxtDropdown && tibetanTxtList.length === 0) fetchTxtList('tibetan');
+                      }}
+                    >
+                      从仓库导入
+                    </button>
+                    {showTibetanTxtDropdown && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '110%',
+                        left: 0,
+                        background: '#fff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.4rem',
+                        boxShadow: '0 2px 8px #0002',
+                        minWidth: '180px',
+                        zIndex: 10
+                      }}>
+                        {tibetanLoading ? <div style={{padding:'8px 16px'}}>加载中...</div> :
+                          (tibetanTxtList.length === 0 ? <div style={{padding:'8px 16px'}}>暂无数据</div> :
+                            tibetanTxtList.map((file, idx) => (
+                              <div
+                                key={file.name}
+                                style={{
+                                  padding: '8px 16px',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  color: '#232526',
+                                  background: idx % 2 === 0 ? '#f3f4f6' : '#fff',
+                                  borderBottom: idx === tibetanTxtList.length - 1 ? 'none' : '1px solid #e5e7eb',
+                                  borderRadius: idx === 0 ? '0.4rem 0.4rem 0 0' : idx === tibetanTxtList.length - 1 ? '0 0 0.4rem 0.4rem' : '0'
+                                }}
+                                onClick={() => fetchTxtContent(file.url, onTibetanChange, setShowTibetanTxtDropdown)}
+                              >
+                                {file.name}
+                              </div>
+                            ))
+                          )
+                        }
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button
                     style={{
@@ -744,6 +928,72 @@ const ReadingArea = ({ sanskritText, tibetanText, chineseText, onSanskritChange,
                       handleJsonUpload(e, onChineseChange, "chinese");
                     }}
                   />
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      style={{
+                        padding: '4px 12px',
+                        background: showChineseTxtDropdown
+                          ? 'linear-gradient(90deg, #fde047 0%, #fbbf24 100%)'
+                          : 'linear-gradient(90deg, #fde047 0%, #facc15 100%)',
+                        color: '#232526',
+                        border: 'none',
+                        borderRadius: '0.4rem',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        boxShadow: showChineseTxtDropdown
+                          ? '0 2px 8px #fde04755, 0 1px 2px #0001'
+                          : '0 1px 2px #0001',
+                        marginLeft: '4px',
+                        marginRight: '4px',
+                        outline: showChineseTxtDropdown ? '2px solid #fde047' : 'none',
+                        position: 'relative',
+                        zIndex: 2,
+                        transition: 'background 0.2s, box-shadow 0.2s, outline 0.2s'
+                      }}
+                      onClick={() => {
+                        setShowChineseTxtDropdown(v => !v);
+                        if (!showChineseTxtDropdown && chineseTxtList.length === 0) fetchTxtList('chinese');
+                      }}
+                    >
+                      从仓库导入
+                    </button>
+                    {showChineseTxtDropdown && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '110%',
+                        left: 0,
+                        background: '#fff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.4rem',
+                        boxShadow: '0 2px 8px #0002',
+                        minWidth: '180px',
+                        zIndex: 10
+                      }}>
+                        {chineseLoading ? <div style={{padding:'8px 16px'}}>加载中...</div> :
+                          (chineseTxtList.length === 0 ? <div style={{padding:'8px 16px'}}>暂无数据</div> :
+                            chineseTxtList.map((file, idx) => (
+                              <div
+                                key={file.name}
+                                style={{
+                                  padding: '8px 16px',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  color: '#232526',
+                                  background: idx % 2 === 0 ? '#f3f4f6' : '#fff',
+                                  borderBottom: idx === chineseTxtList.length - 1 ? 'none' : '1px solid #e5e7eb',
+                                  borderRadius: idx === 0 ? '0.4rem 0.4rem 0 0' : idx === chineseTxtList.length - 1 ? '0 0 0.4rem 0.4rem' : '0'
+                                }}
+                                onClick={() => fetchTxtContent(file.url, onChineseChange, setShowChineseTxtDropdown)}
+                              >
+                                {file.name}
+                              </div>
+                            ))
+                          )
+                        }
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button
                     style={{
